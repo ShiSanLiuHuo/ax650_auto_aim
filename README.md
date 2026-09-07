@@ -4,6 +4,24 @@
 
 本仓库用于说明算法和实现关系。它不是通用自瞄框架，也不承诺覆盖全部硬件、推理后端或实机工况。
 
+## AX650 一键部署
+
+> [!TIP]
+> EnvCfg 脚本面向上科大定制 AX650 镜像，覆盖环境准备、依赖安装和 AXCL 主线版本编译。
+
+```bash
+git clone --branch for_2026_open_source \
+    https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg.git
+cd SHtech_auto_aim_AX650-EnvCfg
+bash AutoInstall.sh
+```
+
+- **适用平台**：上科大定制 AX650 镜像
+- **自动完成**：安装系统依赖、部署 AXCL 头文件、安装 MVS 和 RMCVSerial，并编译 Auto-Aim
+- **仍需手动**：按设备修改 `launch.cfg`，再选择前台运行或安装开机自启动服务
+
+脚本包含交互式安装提示。完整说明和当前限制见[AX650 部署](#ax650-部署)。
+
 ## 阅读入口
 
 推荐按以下顺序阅读：
