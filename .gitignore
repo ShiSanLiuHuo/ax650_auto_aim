@@ -12,3 +12,10 @@ frames/
 data.txt
 tools/data*.txt
 kf_test/
+
+# AX650 镜像转换：只跟踪脚本和文档，中间产物（.raw / .tar / SDK 包 / 日志）不入库
+scripts/ax650-image/work/
+*.raw
+
+# 导出给别的机器的镜像包（可重新生成）
+scripts/ax650-image/ax650-images-*.tar*

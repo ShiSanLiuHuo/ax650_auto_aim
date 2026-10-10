@@ -20,33 +20,34 @@
 | Eigen3 | 系统包 | 坐标变换、滤波和规划 | `find_package(Eigen3)` | 版本未锁定 |
 | Boost | RMCVSerial 的构建依赖 | `timedserial` 间接使用 | EnvCfg 构建 RMCVSerial 时安装 | 主工程没有独立的 Boost 检查 |
 | AXCL | AX650 基础镜像和 `/soc` | `detect/AXCL` | EnvCfg 解包 AXCL 头文件 | 运行库不在 `auto-aim` 仓库中 |
-| Hikvision MVS | `sensor/hikcam` 头文件和 EnvCfg 安装包 | `sensor` | EnvCfg 安装 MVS 并设置 `MVS_PATH` | 内容指向 MVS 2.1.0，但包元数据不一致 |
+| MindVision MVSDK | `sensor/mindvision` 头文件和 EnvCfg 离线包 | `sensor` | EnvCfg 安装 MVSDK 并设置 `MINDVISION_PATH` | 主线相机后端，包内版本为 `linuxSDK_V2.1.0.37` |
+| Hikvision MVS | `sensor/hikcam` 头文件和 EnvCfg 安装包 | `sensor`（`USE_HIKCAM=ON`） | 手动安装 MVS 并设置 `MVS_PATH` | 可选后端；内容指向 MVS 2.1.0，但包元数据不一致 |
 | RMCVSerial | 公开 GitLab `V1.1.1`，commit `56471959` | `timedserial/UartIMU` | EnvCfg 下载、构建并安装到 `/usr/local` | 压缩包版本与 CMake 内部版本不一致 |
 | TinyMPC | `planner/tinympc`，上游 commit `7cecb25e` | `planner` | 随仓库构建 `tinympcstatic` | 本地保留两处定制 |
 | CUDA、TensorRT | 系统运行时 | `detect/TensorRT` | 目标设备自行准备 | 只在 `INFERENCE_BACKEND=TRT` 时使用 |
 | ROCm、MIGraphX | `/opt/rocm` | `detect/ONNX` | 目标设备自行准备 | 只在 `INFERENCE_BACKEND=ONNX` 时使用 |
 
-主线构建默认启用海康支持。编译阶段会包含 `sensor/hikcam`，运行阶段由 `launch.cfg` 的 `source` 选择海康相机或 `test.avi`。离线模式不代表可以省略 AX650 目标环境中的 MVS 安装。
+主线构建默认启用 `USE_MINDVISION`。编译阶段会包含 `sensor/mindvision`，运行阶段由 `launch.cfg` 的 `source` 选择相机或 `test.avi`。离线模式不需要相机，但编译仍要能找到 `libMVSDK.so`；只跑视频输入时可以用 `-DUSE_MINDVISION=OFF -DUSE_HIKCAM=OFF` 完全去掉相机后端。
 
 即使 `port=None` 使用 `MockDriver`，`timedserial` 仍会编译 `UartDriver` 并链接 RMCVSerial。离线模式仍需准备 RMCVSerial 的头文件和共享库。
 
 ## EnvCfg 的职责
 
-[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)面向上科大定制 AX650 镜像。当前仓库只有 `for_2026_open_source` 一个公开分支，没有 tag。该分支的 HEAD 为 `161db3897e7098e800f9d654af197f7f5acb106c`。`AutoInstall.sh` 执行以下工作：
+[PHOENIX AX650 环境配置仓库](https://github.com/ShiSanLiuHuo/PHOENIX_auto_aim_AX650-EnvCfg)面向上科大定制 AX650 镜像，是从上游 [Astra-Whale/SHtech_auto_aim_AX650-EnvCfg](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg) 分出的 fork。两边都只有 `for_2026_open_source` 一个公开分支，没有 tag；fork 的分叉点上游 HEAD 为 `161db3897e7098e800f9d654af197f7f5acb106c`，fork 在该分支上追加了 `dfcb76a`（修正 auto-aim 的 clone 目录）、相机 SDK 换成 MindVision，并把 clone 目标改成本仓库。`AutoInstall.sh` 执行以下工作：
 
 - 安装 GCC、CMake、OpenCV、Eigen3 和 Boost 等通用构建依赖
 - 将 `sources/axcl_inc.tar` 解包到 `/soc`，补充 AXCL 头文件
-- 交互式安装 `sources/MVS_aarch.deb`，并设置 `MVS_PATH`
+- 解包 `sources/mindvision_arm64_v2.1.0.37.tar.gz`，安装 MindVision MVSDK 并设置 `MINDVISION_PATH`
 - 从公开 GitLab 下载 RMCVSerial `V1.1.1`，构建后安装到 `/usr/local`
-- 获取 GitHub 公共版 `auto-aim` 并执行 AXCL 构建
+- clone `ShiSanLiuHuo/ax650_auto_aim`，并以 `-DINFERENCE_BACKEND=AXCL -DUSE_MINDVISION=ON` 构建
 
 AXCL 运行库、AX650 固件和设备侧驱动由基础镜像或目标设备提供。EnvCfg 不会把这些运行时内容转换为通用 Ubuntu 环境。
 
-脚本文件没有 shebang，也没有错误中止策略。下载内容没有统一的 commit、版本清单或校验和。重复执行时，已有的 clone、build 目录和用户环境变量可能产生冲突。脚本历史还包含部署凭据。内部使用时应把凭据轮换和历史清理列为独立任务，文档不展示凭据内容。
+脚本文件没有 shebang，也没有错误中止策略。除新增的 MindVision 离线包自带 `VERSION.txt` 和 SHA-256 记录外，其余下载内容仍没有统一的 commit、版本清单或校验和。重复执行时，已有的 clone、build 目录和用户环境变量可能产生冲突。脚本历史还包含部署凭据。内部使用时应把凭据轮换和历史清理列为独立任务，文档不展示凭据内容。
 
-MVS 安装并非只复制头文件。`MVS_aarch.deb` 会安装 `/opt/MVS`，配置 udev 规则和 `MvLogServer` 服务，并修改系统环境变量。该包面向 arm64 目标镜像，安装前应审阅目标设备和系统持久化变更。
+MindVision 的安装并非只复制库文件。EnvCfg 会把 `88-mvusb.rules` 和 `99-mvusb.rules` 复制到 `/etc/udev/rules.d/`，把头文件复制到 `/usr/include/mindvision/`，把 `libMVSDK.so` 复制到 `/usr/lib/aarch64-linux-gnu/`（目录不存在时退回 `/usr/lib`），最后执行 `ldconfig`。udev 规则负责放开 USB 相机设备节点权限，需要重新插拔相机或重启后生效。`99-mvusb.rules` 引用 `mvusb_dev` 用户组，脚本会在该组缺失时创建。
 
-脚本中的跳过提示使用未加引号的输入判断。直接回车时会触发 shell 判断错误，但脚本仍可能继续安装。AXCL 头文件包仅用于目标环境。其 `ax_isp_version.h` 标识 `AX650` 和 ISP 版本 `3.8.3`，头部包含 Axera 版权和复制限制说明。
+fork 已把三处跳过提示的未加引号判断改成 `[ "${skip}" = 's' ]`，直接回车不会再触发 shell 判断错误；上游 `161db38` 版本仍有该问题，其余脚本结构（无 shebang、无错误中止策略）未改动。AXCL 头文件包仅用于目标环境。其 `ax_isp_version.h` 标识 `AX650` 和 ISP 版本 `3.8.3`，头部包含 Axera 版权和复制限制说明。
 
 环境准备完成后，重新加载环境变量，再在 `auto-aim` 根目录构建：
 
@@ -75,19 +76,36 @@ cmake --build build -j4
 
 当前依赖版本固定为 `V1.1.1`。后续资料整理仍需补齐源 commit、许可证文件和第三方声明。
 
-### Hikvision MVS
+### MindVision MVSDK
 
-`sensor/hikcam/`保存编译所需的 MVS 头文件快照。`hikcam_wrapper.cpp`调用 `MV_CC_*`接口完成 USB 相机枚举、采集、像素格式处理和资源释放。当前封装只枚举 USB 设备，不包含 GigE 相机枚举路径。动态库由 EnvCfg 安装到目标设备，CMake 通过 `MVS_PATH` 查找。
+依赖来源是迈德威视官方 Linux SDK `linuxSDK_V2.1.0.37`。`sensor/mindvision/include/`保存编译所需的 MVSDK 头文件快照（`CameraApi.h`、`CameraDefine.h`、`CameraStatus.h`），`mindvision_wrapper.cpp`调用 `Camera*` 接口完成 USB 相机枚举、曝光/伽马设置、取流和资源释放，并用 `CameraImageProcess` 直接输出 BGR8 图像。
 
-EnvCfg 中的 `MVS_aarch.deb` SHA-256 为：
+当前封装的实现约定：
+
+- `init()` 枚举设备后按 `dev_num` 选择相机，关闭自动曝光，曝光默认 `3.0 ms`、伽马默认 `1.0`，触发模式为连续采集，并丢弃启动阶段的前 5 帧
+- `read()` 按帧头尺寸分配缓冲，取流超时 `1000 ms`；连续失败超过 10 次后重新初始化，与 `hikcam` 的处理方式一致
+- `getFps()` 读取 `CameraGetFrameRate()`，`setBrightness()` 映射到模拟增益 `CameraSetAnalogGain()`
+- 曝光和伽马目前是构造函数默认值，还没有接入 `launch.cfg`
+
+EnvCfg 离线包 `sources/mindvision_arm64_v2.1.0.37.tar.gz` 内的 arm64 `libMVSDK.so` SHA-256 为：
+
+```text
+23a4a84fb9bcedd515c32b89c4c9dac7fb98230a09b3c6c14da99927a4d462be
+```
+
+该动态库的 `DT_NEEDED` 只有 `librt`、`libpthread`、`libdl`、`libm`、`libc`，USB 访问由静态链接的 libusb 完成，因此目标设备不需要额外的 libusb 运行库。MVSDK 属于厂商 SDK，不在本仓库 MIT 许可范围内，再分发前应按迈德威视条款确认头文件和二进制文件的授权范围。
+
+#### 可选后端：Hikvision MVS
+
+`USE_HIKCAM=ON` 时改用 `sensor/hikcam/`。该目录保存 MVS 头文件快照，`hikcam_wrapper.cpp`调用 `MV_CC_*`接口完成 USB 相机枚举、采集、像素格式处理和资源释放。当前封装只枚举 USB 设备，不包含 GigE 相机枚举路径，CMake 通过 `MVS_PATH` 查找动态库。
+
+EnvCfg 不再自动安装 MVS，该路径需要自行准备运行库并设置 `MVS_PATH`。`sources/MVS_aarch.deb` 仍然保留在 EnvCfg 仓库里，作为 `USE_HIKCAM=ON` 的离线备用包，需要时手动执行 `dpkg -i sources/MVS_aarch.deb` 并导出 `MVS_PATH=/opt/MVS/lib/aarch64/`。该包 SHA-256 为：
 
 ```text
 b9e27ac9c0f7e649cf15be826e2bdfb1e70d5b9bab523adaac53fbb3206c98cb
 ```
 
-Debian 元数据把版本写为 `2019-05-30`。包内 Release Note 指向 `MVS 2.1.0 build201228`，SDK 文档目录显示 `V3.1.0`，动态库名包含 `3.1.3.0`。`sensor/hikcam/` 中的头文件与该安装包内 `MVS/include/` 内容一致，仅换行格式不同。
-
-当前仓库没有统一的 MVS SDK 版本字段。MVS 安装包也不属于 `auto-aim` 主仓库。Hikrobot 的 [MVS Linux 安装说明](https://www.hikrobotics.com/en2/source/vision/video/2022/12/19/Standard%20Camera_How_to_Install_MVS%20in%20Linux_22.12.17.pdf)以 `MVS 2.1.0 build201228`为例。后续整理分发材料时，应根据海康分发条款单独确认头文件和二进制文件的授权范围。
+Debian 元数据把版本写为 `2019-05-30`。包内 Release Note 指向 `MVS 2.1.0 build201228`，SDK 文档目录显示 `V3.1.0`，动态库名包含 `3.1.3.0`。`sensor/hikcam/` 中的头文件与该安装包内 `MVS/include/` 内容一致，仅换行格式不同。Hikrobot 的 [MVS Linux 安装说明](https://www.hikrobotics.com/en2/source/vision/video/2022/12/19/Standard%20Camera_How_to_Install_MVS%20in%20Linux_22.12.17.pdf)以 `MVS 2.1.0 build201228`为例。
 
 ### TinyMPC
 
@@ -140,12 +158,16 @@ AXCL 和 TensorRT 保留模型输出的类别编号。MIGraphX 的 `SZU0526`路�
 
 ## 验证状态与待办
 
-本次审计以静态检查为主。当前 Ubuntu 环境没有 `/soc`、MVS、ROCm 或 TensorRT 运行库，也没有安装到系统路径的 RMCVSerial。独立下载的 RMCVSerial `V1.1.1` 源码已在临时目录完成 CMake 配置和构建。未执行 `auto-aim` 完整构建或正式单元测试，目标设备上的运行验证仍需由对应环境完成。
+本次审计以静态检查为主。当前 Ubuntu/macOS 开发机没有 `/soc`、ROCm 或 TensorRT 运行库，也没有安装到系统路径的 RMCVSerial。独立下载的 RMCVSerial `V1.1.1` 源码已在临时目录完成 CMake 配置和构建。
+
+相机后端的验证程度：`sensor/mindvision/mindvision_wrapper.cpp` 已用真实 OpenCV 和仓库内的 MVSDK 头文件编译成目标文件；`sensor_submodule.cpp` 在 `ENABLE_MINDVISION`、`ENABLE_HIKCAM` 和两种都关闭三种情况下都能通过语法检查；CMake 在 `MINDVISION_PATH`（`-D` 或环境变量）指向测试库时能完成配置，缺少 `libMVSDK.so` 时会给出明确报错；EnvCfg 的 MVSDK 安装步骤在仿真根目录里跑通了产物落盘和跳过分支。**没有在 AX650 实机上验证取流**，相机出图、曝光和帧率仍需要在目标设备上实测。
 
 后续按以下顺序补齐：
 
 - 记录 EnvCfg、RMCVSerial 和 TinyMPC 的精确版本或 commit
-- 统一 MVS 包的版本字段，并补齐 MVS、模型和 `test.avi` 的来源与授权信息
+- 记录 MindVision MVSDK 的版本与再分发授权，并补齐模型和 `test.avi` 的来源与授权信息
+- 在 AX650 实机上验证 MindVision 取流、曝光/伽马和帧率，并决定是否把曝光参数接入 `launch.cfg`
+- 如继续维护 `sensor/hikcam`，统一 MVS 包的版本字段并确认授权范围
 - 为 RMCVSerial 和 TinyMPC 形成第三方声明
 - 为 EnvCfg 下载内容补充校验和，轮换并清理历史部署凭据
 - 为辅助工具补充最小依赖说明，或明确标记为实验脚本

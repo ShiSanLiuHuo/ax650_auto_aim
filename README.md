@@ -11,13 +11,13 @@
 
 ```bash
 git clone --branch for_2026_open_source \
-    https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg.git
-cd SHtech_auto_aim_AX650-EnvCfg
+    https://github.com/ShiSanLiuHuo/PHOENIX_auto_aim_AX650-EnvCfg.git
+cd PHOENIX_auto_aim_AX650-EnvCfg
 bash AutoInstall.sh
 ```
 
 - **适用平台**：上科大定制 AX650 镜像
-- **自动完成**：安装系统依赖、部署 AXCL 头文件、安装 MVS 和 RMCVSerial，并编译 Auto-Aim
+- **自动完成**：安装系统依赖、部署 AXCL 头文件、安装 MindVision MVSDK 和 RMCVSerial，并编译 Auto-Aim
 - **仍需手动**：按设备修改 `launch.cfg`，再选择前台运行或安装开机自启动服务
 
 脚本包含交互式安装提示。完整说明和当前限制见[AX650 部署](#ax650-部署)。
@@ -47,7 +47,7 @@ Sensor → Preprocess → Detect
 ```
 
 - `EntryStage`：维护数据包、帧号和阶段计时
-- `Sensor`：读取海康相机或视频文件，同时获取姿态和机器人状态
+- `Sensor`：读取相机或视频文件，同时获取姿态和机器人状态
 - `Preprocess`：将输入图像变换为模型需要的尺寸和格式
 - `Detect`：调用 AXCL、TensorRT 或 MIGraphX 后端生成装甲板候选
 - `CornerRefine`：使用传统视觉方法精修灯条和角点
@@ -74,16 +74,16 @@ Sensor → Preprocess → Detect
 
 ## AX650 部署
 
-AX650 用户使用[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)准备系统环境。该仓库面向上科大定制 AX650 镜像，负责补充 AXCL 头文件、安装 MVS、RMCVSerial 和通用编译依赖，并提供 Auto-Aim 构建入口。AXCL 运行库依赖目标镜像中的 `/soc` 环境。
+AX650 用户使用 [PHOENIX AX650 环境配置仓库](https://github.com/ShiSanLiuHuo/PHOENIX_auto_aim_AX650-EnvCfg)准备系统环境（上游为 Astra-Whale 的 `SHtech_auto_aim_AX650-EnvCfg`，本 fork 的 `AutoInstall.sh` 已把相机 SDK 从 MVS 换成 MindVision）。该仓库面向上科大定制 AX650 镜像，负责补充 AXCL 头文件、安装 MindVision MVSDK、RMCVSerial 和通用编译依赖，并提供 Auto-Aim 构建入口。AXCL 运行库依赖目标镜像中的 `/soc` 环境。
 
 ```bash
 git clone --branch for_2026_open_source \
-    https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg.git
-cd SHtech_auto_aim_AX650-EnvCfg
+    https://github.com/ShiSanLiuHuo/PHOENIX_auto_aim_AX650-EnvCfg.git
+cd PHOENIX_auto_aim_AX650-EnvCfg
 bash AutoInstall.sh
 ```
 
-安装脚本包含交互式步骤。主线编译默认包含海康支持，因此 AX650 部署应安装 MVS，不要跳过 MVS 安装。脚本当前会获取 GitHub 公共版本。内部开发需要在环境准备完成后，切换到目标 GitLab 分支和 commit。脚本结束后，重新加载环境变量，再执行手动构建：
+安装脚本包含交互式步骤。主线编译默认启用 MindVision 相机支持（`USE_MINDVISION=ON`），因此 AX650 部署应安装 MindVision MVSDK，不要跳过 SDK 安装。脚本当前会获取 GitHub 公共版本。内部开发需要在环境准备完成后，切换到目标 GitLab 分支和 commit。脚本结束后，重新加载环境变量，再执行手动构建：
 
 ```bash
 source ~/.bashrc
@@ -96,14 +96,14 @@ cmake -S . -B build -DINFERENCE_BACKEND=AXCL
 cmake --build build -j4
 ```
 
-编译阶段固定包含海康支持。运行阶段通过 `launch.cfg` 选择相机或视频输入：
+编译阶段固定包含一个相机后端。运行阶段通过 `launch.cfg` 选择相机或视频输入：
 
 | 模式 | `source` | `port` | 说明 |
 | --- | --- | --- | --- |
-| AX650 实机 | `0` | 实际串口路径 | 使用海康相机和下位机状态 |
+| AX650 实机 | `0` | 实际串口路径 | 使用迈德威视相机和下位机状态 |
 | AX650 离线演示 | `test.avi` | `None` | 使用仓库视频和 `MockDriver` |
 
-两种模式使用同一份包含海康支持的构建产物。离线演示只需要修改运行配置，不需要重新关闭海康编译。
+两种模式使用同一份相机后端的构建产物。离线演示只需要修改运行配置，不需要重新关闭相机支持。
 
 ## 构建后端
 
@@ -117,7 +117,7 @@ cmake --build build -j4
 
 当前示范主线以 `AXCL` 为准。`TRT` 和 `ONNX` 后端保留在仓库中，但维护和验证不充分。
 
-通用依赖包括 OpenCV、Eigen3 和 RMCVSerial。启用海康相机时还需要 MVS 运行库，并设置 `MVS_PATH`。
+通用依赖包括 OpenCV、Eigen3 和 RMCVSerial。启用相机输入时还需要对应的相机 SDK：默认使用 MindVision MVSDK（EnvCfg 安装到 `/usr/lib/aarch64-linux-gnu`，可用 `MINDVISION_PATH` 指向其它位置）；改用海康 MVS 时需要设置 `MVS_PATH`。
 
 示例配置命令：
 
@@ -126,7 +126,16 @@ cmake -S . -B build -DINFERENCE_BACKEND=AXCL
 cmake --build build -j
 ```
 
-根据目标平台，将 `AXCL` 替换为 `TRT` 或 `ONNX`。主线构建默认启用海康支持。只有在明确不需要海康运行库的特殊主机环境中，才使用 `-DUSE_HIKCAM=OFF`。当前主机未必具备对应 SDK，因此配置成功不代表目标后端一定能完成编译。
+根据目标平台，将 `AXCL` 替换为 `TRT` 或 `ONNX`。相机后端由下面的开关选择，默认走 MindVision。只跑视频输入时可以把两个相机开关都设为 `OFF`。当前主机未必具备对应 SDK，因此配置成功不代表目标后端一定能完成编译。
+
+### 相机后端
+
+| 开关 | 默认 | 代码位置 | 运行库 |
+| --- | --- | --- | --- |
+| `USE_MINDVISION` | `ON` | `sensor/mindvision/` | MindVision MVSDK（EnvCfg 离线安装） |
+| `USE_HIKCAM` | `OFF` | `sensor/hikcam/` | 海康 MVS，需要环境变量 `MVS_PATH` |
+
+两个开关互斥，同时开启会在 CMake 配置阶段直接报错。两种后端共用同一套 `launch.cfg`：`source=0` 打开相机，其它值读取视频文件。
 
 ## 配置和输入
 
@@ -134,7 +143,7 @@ cmake --build build -j
 
 | 字段 | 说明 |
 | --- | --- |
-| `source` | `0` 表示海康相机，其他值表示视频文件路径 |
+| `source` | `0` 表示相机，其他值表示视频文件路径 |
 | `port` | 串口设备路径，`None` 使用 `MockDriver` |
 | `model` | 模型文件路径 |
 | `camera_para` | 相机内参和相机到 IMU 的外参 |
@@ -196,7 +205,7 @@ PnP 当前根据 `armor_number` 选择大、小装甲板模型。实现把 `0`�
 ./build/auto-aim
 ```
 
-无硬件模式需要在 `launch.cfg` 中将 `source` 设置为 `test.avi`，将 `port` 设置为 `None`，并选择与构建后端匹配的模型。该模式仍使用包含海康支持的构建产物。
+无硬件模式需要在 `launch.cfg` 中将 `source` 设置为 `test.avi`，将 `port` 设置为 `None`，并选择与构建后端匹配的模型。该模式仍使用包含相机支持的构建产物。
 
 ## 系统服务与开机自启动
 
@@ -254,8 +263,9 @@ autoaim-start
 
 - [依赖与示范资产](docs/dependencies-and-assets.md)：系统依赖、外部库、内置组件、模型和辅助工具的审计记录
 - [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)：公开 GitLab 串口库
-- 海康 MVS：相机运行库
-- [AX650 环境配置](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)：AX650 平台环境和部署材料
+- MindVision MVSDK：主线的相机运行库（`USE_MINDVISION=ON`）
+- 海康 MVS：可选的相机运行库（`USE_HIKCAM=ON` 时使用），EnvCfg 的 `sources/MVS_aarch.deb` 保留作离线备用包
+- [PHOENIX AX650 环境配置](https://github.com/ShiSanLiuHuo/PHOENIX_auto_aim_AX650-EnvCfg)：AX650 平台环境和部署材料（[上游仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)）
 - [第三方声明](NOTICE)：第三方库、SDK、模型和视频的许可边界
 - [算法扫盲文档](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)：飞书预印本
 
