@@ -10,6 +10,9 @@
 #include <stdexcept>
 #include <thread>
 #include <video/video_wrapper.hpp>
+#ifdef ENABLE_MINDVISION
+#include <mindvision/mindvision_wrapper.hpp>
+#endif
 #ifdef ENABLE_HIKCAM
 #include <hikcam/hikcam_wrapper.hpp>
 #endif
@@ -30,10 +33,12 @@ namespace sensor
         // 初始化视频源
         if (is_camera_source)
         {
-#ifdef ENABLE_HIKCAM
+#ifdef ENABLE_MINDVISION
+            video = new MindVisionWrapper();
+#elif defined(ENABLE_HIKCAM)
             video = new HikCamWrapper();
 #else
-            throw std::runtime_error("camera source requested but ENABLE_HIKCAM is disabled");
+            throw std::runtime_error("camera source requested but no camera backend is enabled (USE_MINDVISION / USE_HIKCAM)");
 #endif
         }
         else

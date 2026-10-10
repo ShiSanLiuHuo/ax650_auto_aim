@@ -22,9 +22,13 @@ The vendored snapshot contains local changes. The upstream license and copyright
 
 RMCVSerial is an external dependency and is not included in this repository. Obtain and use it under its own license terms.
 
+## MindVision MVSDK
+
+The files under `sensor/mindvision/include/` are vendor camera SDK headers from the MindVision Linux SDK `linuxSDK_V2.1.0.37`. The matching `libMVSDK.so` runtime is installed onto the target board by the EnvCfg environment repository and is not included here. The MVSDK is not covered by this repository's MIT License; obtain and use it under MindVision's own terms.
+
 ## Hikvision MVS and AXCL SDKs
 
-The files under `sensor/hikcam/` include vendor camera SDK headers used to compile the Hikvision path. The MVS runtime and AXCL runtime are supplied by the target environment and are not covered by this repository's MIT License. Obtain and use these SDKs under the respective vendor terms.
+The files under `sensor/hikcam/` include vendor camera SDK headers used to compile the optional Hikvision path (`USE_HIKCAM=ON`). The MVS runtime and AXCL runtime are supplied by the target environment and are not covered by this repository's MIT License. Obtain and use these SDKs under the respective vendor terms.
 
 ## Models and video
 

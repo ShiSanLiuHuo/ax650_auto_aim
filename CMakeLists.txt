@@ -13,7 +13,11 @@ add_compile_definitions(PROJECT_DIR="${PROJECT_SOURCE_DIR}")
 set(INFERENCE_BACKEND "AXCL" CACHE STRING "Select inference backend: ONNX, TRT, AXCL")
 set_property(CACHE INFERENCE_BACKEND PROPERTY STRINGS ONNX TRT AXCL)
 
-option(USE_HIKCAM "Build with HikCAM Lib" ON)
+option(USE_HIKCAM "Build with Hikvision MVS (HikCAM Lib)" OFF)
+option(USE_MINDVISION "Build with MindVision MVSDK" ON)
+if (USE_HIKCAM AND USE_MINDVISION)
+    message(FATAL_ERROR "USE_HIKCAM and USE_MINDVISION are mutually exclusive; enable only one camera backend.")
+endif ()
 
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 
